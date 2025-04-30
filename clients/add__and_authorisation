@@ -1,0 +1,48 @@
+import requests
+
+# URL de base de l'API
+BASE_URL = "http://127.0.0.1:8000/api/"
+
+# Identifiants de l'utilisateur
+USERNAME = "tayou"
+PASSWORD = "65896589"
+
+# Étape 1 : Obtenir le token d'authentification
+def get_token():
+    url = f"{BASE_URL}api-token-auth/"
+    data = {"username": USERNAME, "password": PASSWORD}
+    response = requests.post(url, json=data)
+    if response.status_code == 200:
+        token = response.json().get("token")
+        print(f"Token obtenu : {token}")
+        return token
+    else:
+        print(f"Erreur lors de l'obtention du token : {response.status_code}")
+        print(response.json())
+        return None
+
+# Étape 2 : Créer un service avec le token
+def create_service(token):
+    url = f"{BASE_URL}services/"
+    headers = {"Authorization": f"Token {token}"}
+    data = {
+        "name": "New Service",
+        "category_id": 1,
+        "address": "123 Street",
+        "phone": "555-5555",
+        "latitude": 45.123,
+        "longitude": -93.456
+    }
+    response = requests.post(url, json=data, headers=headers)
+    if response.status_code == 201:
+        print("Service créé avec succès :")
+        print(response.json())
+    else:
+        print(f"Erreur lors de la création du service : {response.status_code}")
+        print(response.json())
+
+# Exécution du script
+if __name__ == "__main__":
+    token = get_token()
+    if token:
+        create_service(token)
