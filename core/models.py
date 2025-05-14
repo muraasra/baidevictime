@@ -72,7 +72,7 @@ class QuestionTransversale(models.Model):
     jours_ouverture = models.JSONField(default=list)  # Stocke les jours sous forme de liste
     heures_ouverture = models.TimeField(null=True, blank=True)
     gratuit = models.JSONField(default=list)  # Stocke les options de gratuité sous forme de liste
-
+    statut = models.BooleanField(default=0)
     author= models.ForeignKey(User,on_delete=models.CASCADE,null=True, blank=True)
     
     class Meta:
