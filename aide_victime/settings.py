@@ -11,13 +11,18 @@ https://docs.djangoproject.com/en/4.2/ref/settings/
 """
 
 import os
+import openai
 from pathlib import Path
 from datetime import timedelta
+from dotenv import load_dotenv
 from corsheaders.defaults import default_headers
 # Build paths inside the project like this: BASE_DIR / 'subdir'.
 BASE_DIR = Path(__file__).resolve().parent.parent
 
+load_dotenv()
+GOOGLE_API_KEY = os.getenv("GOOGLE_API_KEY")
 
+openai.api_key = os.getenv("OPENAI_API_KEY")
 # Quick-start development settings - unsuitable for production
 # See https://docs.djangoproject.com/en/4.2/howto/deployment/checklist/
 
@@ -43,8 +48,9 @@ INSTALLED_APPS = [
     'core',
     'corsheaders',
     'rest_framework.authtoken', 
-    
+    'chatbot',
     'drf_yasg',
+    'chatgpt',
     
     
 ]
@@ -59,7 +65,7 @@ REST_FRAMEWORK = {
         'rest_framework_simplejwt.authentication.JWTAuthentication',
     ],
     'DEFAULT_PERMISSION_CLASSES': [
-        'rest_framework.permissions.IsAuthenticatedOrReadOnly',  # Example: Require authentication for all views
+        # 'rest_framework.permissions.IsAuthenticatedOrReadOnly',  # Example: Require authentication for all views
     ],
 }
 
@@ -74,7 +80,7 @@ MIDDLEWARE = [
     'django.middleware.clickjacking.XFrameOptionsMiddleware',
     
 ]
-
+SESSION_COOKIE_AGE = 60 * 60 * 24 * 14 # 2 semaines
 
 SIMPLE_JWT = {
     "ACCESS_TOKEN_LIFETIME": timedelta(minutes=60),  # 1h par exemple
@@ -85,9 +91,11 @@ SIMPLE_JWT = {
 }
 
 #CORS_ALLOW_ALL_ORIGINS = True
-CORS_ALLOWED_ORIGINS = [
-    'http://localhost:3000',  # nuxt app running on localhost:3000
-]
+# CORS_ALLOWED_ORIGINS = [
+#     'http://localhost:3000', 
+#     'http://localhost:4200',# nuxt app running on localhost:3000
+# ]
+CORS_ALLOW_ALL_ORIGINS = True
 
 
 CORS_ALLOW_HEADERS = list(default_headers) + [

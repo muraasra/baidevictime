@@ -4,6 +4,7 @@ from django.urls import path, include
 from rest_framework import routers
 from core import views
 from rest_framework.authtoken.views import obtain_auth_token
+import chatbot.views
 
 from django.urls import re_path
 from rest_framework import permissions
@@ -66,6 +67,9 @@ urlpatterns += [
     path('admin/', admin.site.urls),
     path('api/', include(router.urls)),
     path('api/submit-form/', views.submit_form, name='submit_form'),
+    path("chatbot/", include("chatbot.urls")),
+    path('chat/', include('chatgpt.urls')),  # inclure les URLs de l'app chat
+
     # Optionnel: route pour le frontend React (voir section Intégration React)
     path('', views.FrontendAppView.as_view()),  # on y reviendra
 ]

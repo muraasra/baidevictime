@@ -1,0 +1,173 @@
+<!DOCTYPE html><html lang="fr">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <title>Assistant de soutien moral</title>
+  <style>
+    :root{
+      --bg:#f7f8fa;
+      --primary:#2563eb;
+      --primary-dark:#1e4ed8;
+      --border:#d1d5db;
+      --assistant:#e5e7eb;
+      --user:#dbeafe;
+    }
+    *{box-sizing:border-box;margin:0;padding:0;font-family:system-ui,-apple-system,"Segoe UI",Roboto,Helvetica,Arial,sans-serif}
+    body,html{height:100%;background:var(--bg);color:#111}
+    #app{display:flex;height:100%}
+    /* -------- Sidebar -------- */
+    #sidebar{width:260px;display:flex;flex-direction:column;border-right:1px solid var(--border);background:#fff}
+    #sidebar header{padding:16px;border-bottom:1px solid var(--border);font-weight:600;font-size:18px}
+    #chatList{flex:1;overflow-y:auto}
+    .conv-btn{display:block;width:100%;padding:12px 16px;text-align:left;border:none;background:transparent;cursor:pointer;border-bottom:1px solid var(--border);transition:background .2s}
+    .conv-btn:hover,.conv-btn.active{background:#f1f5f9}
+    #newBtn{background:var(--primary);color:#fff;margin:12px 16px;border:none;border-radius:6px;padding:10px;font-weight:600;cursor:pointer}
+    #newBtn:hover{background:var(--primary-dark)}
+    /* -------- Chat area -------- */
+    #chatArea{flex:1;display:flex;flex-direction:column}
+    #messages{flex:1;overflow-y:auto;padding:20px;display:flex;flex-direction:column;gap:10px}
+    .bubble{max-width:75%;padding:10px 14px;border-radius:10px;font-size:15px;line-height:1.4}
+    .assistant{background:var(--assistant);align-self:flex-start}
+    .user{background:var(--user);align-self:flex-end}/* loader */
+.loader{width:48px;height:16px;display:flex;gap:4px}
+.loader div{width:8px;height:8px;background:#999;border-radius:50%;animation:bounce 1.2s infinite ease-in-out}
+.loader div:nth-child(2){animation-delay:.2s}
+.loader div:nth-child(3){animation-delay:.4s}
+@keyframes bounce{0%,80%,100%{transform:scale(0)}40%{transform:scale(1)}}
+
+/* input */
+#inputForm{display:flex;border-top:1px solid var(--border);background:#fff}
+#inputField{flex:1;padding:12px 14px;border:none;font-size:15px}
+#sendBtn{padding:0 20px;background:var(--primary);color:#fff;border:none;font-weight:600;cursor:pointer}
+#sendBtn:hover{background:var(--primary-dark)}
+
+  </style>
+</head>
+<body>
+  <div id="app">
+    <aside id="sidebar">
+      <header>Soutien moral</header>
+      <button id="newBtn">+ Nouveau chat</button>
+      <div id="chatList"></div>
+    </aside><main id="chatArea">
+  <div id="messages"></div>
+  <form id="inputForm">
+    <input id="inputField" placeholder="Écris ton message…" autocomplete="off">
+    <button id="sendBtn" type="submit">Envoyer</button>
+  </form>
+</main>
+
+  </div><script>
+(function(){
+  var listEl   = document.getElementById('chatList');
+  var msgsEl   = document.getElementById('messages');
+  var inputEl  = document.getElementById('inputField');
+  var currentId = null;
+  var loadingBubble = null;
+
+  // ---------- helpers UI ----------
+  function bubble(text, cls){
+    var div = document.createElement('div');
+    div.className = 'bubble ' + cls;
+    div.textContent = text;
+    msgsEl.appendChild(div);
+    msgsEl.scrollTop = msgsEl.scrollHeight;
+  }
+  function showLoader(){
+    var wrap=document.createElement('div');
+    wrap.className='bubble assistant';
+    var loader=document.createElement('div');
+    loader.className='loader';
+    loader.innerHTML='<div></div><div></div><div></div>';
+    wrap.appendChild(loader);
+    msgsEl.appendChild(wrap);
+    msgsEl.scrollTop=msgsEl.scrollHeight;
+    loadingBubble=wrap;
+  }
+  function removeLoader(){ if(loadingBubble){ loadingBubble.remove(); loadingBubble=null; } }
+
+  // ---------- fetch util ----------
+  function jsonFetch(url, options){
+    var base={ credentials:'include' };
+    var opts=Object.assign(base, options||{});
+    return fetch(url, opts).then(function(resp){
+      return resp.text().then(function(txt){
+        if(!resp.ok){ throw new Error(txt||resp.statusText); }
+        try{ return JSON.parse(txt); }
+        catch(e){ throw new Error('Réponse non‑JSON du serveur'); }
+      });
+    });
+  }
+
+  // ---------- chat list ----------
+  function renderList(chats){
+    listEl.innerHTML='';
+    chats.forEach(function(c){
+      var btn=document.createElement('button');
+      btn.className='conv-btn'+(c.id===currentId?' active':'');
+      btn.textContent=c.title||( 'Chat #'+c.id );
+      btn.onclick=function(){ openChat(c); };
+      listEl.appendChild(btn);
+    });
+  }
+  function openChat(conv){
+    currentId=conv.id;
+    renderList(JSON.parse(sessionStorage.getItem('convs'))||[]);
+    msgsEl.innerHTML='';
+    (conv.messages||[]).forEach(function(m){ bubble(m.content,m.sender); });
+  }
+  function refreshChats(){
+    return jsonFetch('/chatbot/chat/').then(function(chats){
+      sessionStorage.setItem('convs',JSON.stringify(chats));
+      renderList(chats);
+      if(currentId){
+        var c=chats.find(function(x){return x.id===currentId});
+        if(c) openChat(c);
+      }
+    });
+  }
+
+  // ---------- send message ----------
+  function createChat(msg){
+    showLoader();
+    return jsonFetch('/chatbot/chat/',{
+      method:'POST',
+      headers:{'Content-Type':'application/json'},
+      body:JSON.stringify({message:msg})
+    }).then(function(conv){
+      removeLoader();
+      return refreshChats().then(function(){ openChat(conv); });
+    });
+  }
+  function sendMsg(txt){
+    bubble(txt,'user');
+    inputEl.value='';
+    showLoader();
+
+    var p = currentId
+        ? jsonFetch('/chatbot/chat/'+currentId+'/',{
+            method:'POST',
+            headers:{'Content-Type':'application/json'},
+            body:JSON.stringify({message:txt})
+          })
+        : createChat(txt);
+
+    p.then(function(data){
+        removeLoader();
+        if(data.reply) bubble(data.reply,'assistant');
+    }).catch(function(err){ removeLoader(); alert(err.message||err); });
+  }
+
+  // ---------- UI events ----------
+  document.getElementById('inputForm').addEventListener('submit',function(e){
+    e.preventDefault();
+    var txt=inputEl.value.trim();
+    if(txt) sendMsg(txt);
+  });
+  document.getElementById('newBtn').onclick=function(){ currentId=null; msgsEl.innerHTML=''; renderList(JSON.parse(sessionStorage.getItem('convs'))||[]); };
+
+  // ---------- init ----------
+  refreshChats().catch(console.error);
+})();
+</script></body>
+</html>
